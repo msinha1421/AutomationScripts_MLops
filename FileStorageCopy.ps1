@@ -1,6 +1,11 @@
 ﻿# ============================================================
 # CONFIGURATION — Fill these in
 # ============================================================
+#Run the below commands 1st
+#az login --tenant "<DirectoryB-TenantId>"
+#az account set --subscription "<DevOps-SubscriptionId>"
+#az storage account keys list --account-name "<storageaccount2>" --output table
+
 $srcAccount = "ffaimlstorage"
 $srcKey     = ""
 
