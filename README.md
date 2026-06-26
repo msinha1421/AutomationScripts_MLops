@@ -1,67 +1,85 @@
 # AutomationScripts_MLops
 The repo contains the scripts for MLops
 
-# Azure File Share Migration Script : FileStorage.ps1
-This PowerShell script automates the migration of multiple Azure File Shares from a source storage account to a destination storage account using az cli and azcopy.
-It handles upfront credential verification, dynamically generates short-lived SAS tokens for secure transfer, pre-creates missing shares at the destination, and optimizes copy speeds for large datasets.
+## FileStorage.ps1
 
-# Features:
+PowerShell script to migrate Azure File Shares from one storage account to another using Azure CLI and AzCopy.
 
-1. Upfront Verification: Validates storage account keys before running any migrations, avoiding mid-job failures.
-2. Automated Provisioning: Checks if the target file share exists at the destination; if not, it automatically creates it.
-3. Secure Token Generation: Generates temporary 5-day Account SAS tokens on the fly, eliminating the need to hardcode SAS URIs.
-4. Performance Tuned: Sets AZCOPY_CONCURRENCY_VALUE = 512 to maximize network throughput for file intensive copies.
-5. Safe Copy Mode: Uses --overwrite=false to ensure existing files at the destination are never accidentally replaced or corrupted.
+## What It Does
 
-# Prerequisites
+- Validates storage account keys upfront before running any migrations
+- Auto-creates missing file shares at the destination
+- Generates temporary 5-day SAS tokens on the fly (no hardcoded SAS URIs)
+- Runs AzCopy with `AZCOPY_CONCURRENCY_VALUE=512` for max throughput
+- Uses `--overwrite=false` so existing files are never replaced
 
-Before running the script, ensure you have the following tools installed and configured:
-1. Azure CLI: Installed and authenticated (az login). Download here.
-2. AzCopy: Installed and added to your system's PATH. Download here.
-3. PowerShell: 5.1 or higher (Windows PowerShell or PowerShell Core).
+## Prerequisites
 
-Configuration
-Open the script and update the variables at the top of the file:
+- [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli) — installed and authenticated (`az login`)
+- [AzCopy](https://learn.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-v10) — installed and in your system PATH
+- PowerShell 5.1+ (Windows PowerShell or PowerShell Core)
 
-PowerShell
-# 1. Define your source and destination accounts
+## Setup
+
+### 1. Get Storage Account Access Keys
+
+1. Go to [Azure Portal](https://portal.azure.com) → **Storage accounts**
+2. Open the storage account → **Security + networking** → **Access keys**
+3. Click **Show** next to key1 and copy it
+4. Repeat for both source and destination accounts
+
+### 2. Configure the Script
+
+Open `FileStorage.ps1` and update the variables at the top:
+
+```powershell
+# Source
 $srcAccount = "ffaimlstorage"
 $srcKey     = "YOUR_SOURCE_ACCESS_KEY"
 
+# Destination
 $dstAccount = "gkffaimlstorage"
 $dstKey     = "YOUR_DESTINATION_ACCESS_KEY"
 
-# 2. Add the specific share names you want to migrate
+# Shares to migrate
 $shares = @(
     "poctest",
     "testshare",
     "training-checkpoint",
     "yotta-sync"
 )
+```
 
-# How It Works
-1. Validation
-Step 1
-The script attempts to list file shares on both accounts using the provided keys. If either key is invalid, the script safely halts execution immediately.
+### 3. Run
 
-2. SAS Token Generation
-Step 2
-It generates an Account-level Shared Access Signature (SAS) for both source and destination scoped explicitly to File Services (f) with full read/write/list permissions.
+```powershell
+az login
+.\FileStorage.ps1
+```
 
-3. Destination Setup
-Step 3
-It loops through your array of shares. For each share, it attempts to create it at the destination. If the share already exists, it gracefully logs a warning and moves forward.
+## How It Works
 
-4. AzCopy Execution
-Step 4
-It constructs the secure source and destination URIs and invokes azcopy copy. A summary table logs successful and failed shares at the very end.
+1. **Validation** — Lists shares on both accounts to verify keys. Halts if either key is invalid.
+2. **SAS Generation** — Creates Account-level SAS tokens scoped to File Services with read/write/list permissions.
+3. **Destination Setup** — Creates each share at the destination if it doesn't exist. Skips with a warning if it does.
+4. **AzCopy** — Copies files share-by-share. Prints a summary table of successes and failures at the end.
 
+## Troubleshooting
 
-# Troubleshooting & Safety
-1. Important Security Reminder: Never commit this script to a public repository with your $srcKey or $dstKey populated. Always clear the keys before pushing to source control.
-2. Network Firewalls: If either storage account has "Enabled from selected networks and IP addresses" turned on, ensure the machine running this script is whitelisted in both storage firewalls.
-3. Resuming Interrupted Jobs: If the script stops halfway through, you can safely run it again. Because --overwrite=false is set, AzCopy will skip files that are already completed and only copy missing/remaining data.
+| Problem | Fix |
+|---|---|
+| Script halts at validation | Access key is wrong — re-copy from Azure Portal |
+| `azcopy: command not found` | AzCopy isn't in PATH — reinstall or add it |
+| `az: command not found` | Azure CLI not installed |
+| Network/firewall errors | Whitelist your machine in both storage account firewalls |
+| Script stopped midway | Re-run it — `--overwrite=false` means it skips already-copied files |
 
+## Security
+
+> **Do not commit this file with keys populated.** Clear `$srcKey` and `$dstKey` before pushing.
+
+- SAS tokens auto-expire after 5 days
+- Rotate storage account keys after migration if they were shared or exposed
 
 
 # Retro Report Automation : RetroML.y
